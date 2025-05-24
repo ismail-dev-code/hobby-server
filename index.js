@@ -11,9 +11,6 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.pw0rah1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-
-
-
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -24,7 +21,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    
     await client.connect();
 
     const hobbiesCollection = client.db("hobbyNewDB").collection("newHobbies");
@@ -61,17 +57,52 @@ async function run() {
 
     app.post("/create-group", async (req, res) => {
       const newGroup = req.body;
-      console.log(newGroup);
+      // console.log(newGroup);
       const result = await hobbiesCollection.insertOne(newGroup);
       res.send(result);
     });
 
     app.delete("/all-group/:id", async (req, res) => {
       const id = req.params.id;
-      const result = await hobbiesCollection.deleteOne({ _id: new ObjectId(id) });
+      const result = await hobbiesCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
-        // POST route for chatbot
+
+    // users related APIs start here
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const userProfile = req.body;
+      const result = await usersCollection.insertOne(userProfile);
+      res.send(result);
+    });
+
+    app.patch("/users", async (req, res) => {
+      const { email, lastSignInTime } = req.body;
+      const filter = { email: email };
+      const updatedDoc = {
+        $set: {
+          lastSignInTime: lastSignInTime,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
+    // user related APIs end here
+
+    // POST route for chatbot start here
     app.post("/chat", async (req, res) => {
       const { messages } = req.body;
 
@@ -83,7 +114,7 @@ async function run() {
         const response = await axios.post(
           "https://api.openai.com/v1/chat/completions",
           {
-            model: "gpt-3.5-turbo", 
+            model: "gpt-3.5-turbo",
             messages: messages,
             max_tokens: 150,
             temperature: 0.7,
@@ -105,8 +136,8 @@ async function run() {
         });
       }
     });
+    // POST route for chatbot end here
 
-    
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
